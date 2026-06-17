@@ -43,10 +43,17 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
 	};
 
 	/**
+	 * Valid Weather Types
+	 */
+	public static String[] weather_types = {
+			"clear", "rain", "thunder"
+	};
+
+	/**
 	 * Valid Subcommands
 	 */
 	private static String[] subcommands = {
-			"tp", "list", "version", "create", "spawn", "setspawn", "gamerule", "help", "difficulty", "time", "info", "portal"
+			"tp", "list", "version", "create", "spawn", "setspawn", "gamerule", "gameruleAll", "help", "difficulty", "time", "weather", "info", "portal"
 			// TODO: Add: delete, load, unload, info, clone, who, import
 	};
 	
@@ -90,8 +97,8 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
                 for (String s : names) builder.suggest(s);
             }
 
-            if (cmds[1].equalsIgnoreCase("gamerule") && (ALL || Perm.has(plr, "multiworld.gamerule"))) {
-                
+            if ((cmds[1].equalsIgnoreCase("gamerule") || cmds[1].equalsIgnoreCase("gameruleAll")) && (ALL || Perm.has(plr, "multiworld.gamerule"))) {
+
             	IGameruleCommand gameruleCommand = Util.getGameruleCommand();
 
             	if (gameruleCommand == null) {
@@ -100,7 +107,7 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
             	}
 
             	gameruleCommand.initRulesMapIfNeeded(MultiworldMod.mc);
-                
+
                 String last = input.substring(input.lastIndexOf(' ')).trim();
 
                 for (String name : gameruleCommand.getKeys()) {
@@ -131,6 +138,16 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
                 return builder.buildFuture();
             }
 
+            if (cmds[1].equalsIgnoreCase("weather") && (ALL || Perm.has(plr, "multiworld.weather"))) {
+            	String last = input.substring(input.lastIndexOf(' ')).trim();
+            	for (String name : weather_types) {
+                 	if (name.startsWith(last) || last.contains("weather") || name.toLowerCase().contains(last)) {
+                 		builder.suggest(name);
+                 	}
+                }
+                return builder.buildFuture();
+            }
+
             if (cmds[1].equalsIgnoreCase("info") && (ALL || Perm.has(plr, "multiworld.info"))) {
             	for (String s : getWorldNames()) builder.suggest(s);
             	return builder.buildFuture();
@@ -145,7 +162,7 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
         }
 
         if (cmds.length <= 3 || (cmds.length <= 4 && !input.endsWith(" "))) {
-            if (cmds[1].equalsIgnoreCase("gamerule") && (ALL || Perm.has(plr, "multiworld.gamerule")) ) {
+            if ((cmds[1].equalsIgnoreCase("gamerule") || cmds[1].equalsIgnoreCase("gameruleAll")) && (ALL || Perm.has(plr, "multiworld.gamerule")) ) {
                 // TODO: IntRules
             	builder.suggest("true");
                 builder.suggest("false");
@@ -161,6 +178,11 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
                     names.add(val);
                  });
                 for (String s : names) builder.suggest(s);
+            }
+
+            // Weather world id (argument 2)
+            if (cmds[1].equalsIgnoreCase("weather") && (ALL || Perm.has(plr, "multiworld.weather")) ) {
+            	for (String s : getWorldNames()) builder.suggest(s);
             }
 
             // Time value (argument 3): query types or named times.

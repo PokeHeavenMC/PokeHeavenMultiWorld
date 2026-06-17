@@ -1,5 +1,4 @@
 import net.fabricmc.loom.task.RemapJarTask
-import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 
 
 plugins {
@@ -67,16 +66,12 @@ dependencies {
 		modImplementation(fabricApi.module(it, "0.103.0+1.21.1"))
 	}
 	
-	val ic = DefaultExternalModuleDependency(
-		"com.javazilla.mods",
-		"icommon-fabric-1.21.1",
-		"1.21.1",
-		null
-	).apply {
-		isChanging = true // Make sure we get the latest version of iCommon
-	}
-
-	modImplementation(ic)
+	// iCommon : on fige le jar vendoré (compilé avec Loom 1.11.8, remap mixin) dans libs/.
+	// L'artefact distant `com.javazilla.mods:icommon-fabric-1.21.1:1.21.1` (isChanging) a été
+	// republié recompilé avec Loom 1.15.5 (+ Fabric-Loom-Mixin-Remap-Type: static), que notre
+	// Architectury Loom 1.13.469 ne sait pas remapper ("Mod was built with a newer version of Loom").
+	// Pour suivre l'upstream il faudrait monter Loom à 1.17, ce qui casserait le build multi-versions.
+	modImplementation(files("libs/icommon-fabric-1.21.1.jar"))
 }
 
 // Note: dimapi is not needed for 1.21

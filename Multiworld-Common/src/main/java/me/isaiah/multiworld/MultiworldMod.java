@@ -32,6 +32,7 @@ import me.isaiah.multiworld.command.SpawnCommand;
 import me.isaiah.multiworld.command.TimeCommand;
 import me.isaiah.multiworld.command.TpCommand;
 import me.isaiah.multiworld.command.Util;
+import me.isaiah.multiworld.command.WeatherCommand;
 import me.isaiah.multiworld.perm.Perm;
 import me.isaiah.multiworld.portal.Portal;
 import multiworld.api.WorldFolderMode;
@@ -67,9 +68,11 @@ public class MultiworldMod {
     		"&a/mw tp <id>&r - Teleport to a world",
     		"&a/mw list&r - List all worlds",
     		"&a/mw gamerule <rule> <value>&r - Change a worlds Gamerules",
+    		"&a/mw gameruleAll <rule> <value>&r - Change a Gamerule in all dimensions",
     		"&a/mw create <id> <env> [-g=<generator> -s=<seed>]&r - create a new world",
     		"&a/mw difficulty <value> [world id] - Sets the difficulty of a world",
     		"&a/mw time <set|add|query> <time> [world id]&r - Change a world's time of day",
+    		"&a/mw weather <clear|rain|thunder> [world id] [duration]&r - Set a world's weather",
     		"&a/mw info [world id]&r - Show info about a world (players, time, weather, gamerules, spawn)"
     };
 
@@ -337,6 +340,11 @@ public class MultiworldMod {
         if (args[0].equalsIgnoreCase("gamerule") && Perm.check(plr, "multiworld.gamerule")) {
         	return Util.getGameruleCommand().run(mc, plr, args);
         }
+
+        // GameruleAll Command (apply a gamerule to every dimension)
+        if (args[0].equalsIgnoreCase("gameruleAll") && Perm.check(plr, "multiworld.gamerule")) {
+        	return Util.getGameruleCommand().runAll(mc, plr, args);
+        }
         
         // Difficulty Command
         if (args[0].equalsIgnoreCase("difficulty") && Perm.check(plr, "multiworld.difficulty")) {
@@ -346,6 +354,11 @@ public class MultiworldMod {
         // Time Command
         if (args[0].equalsIgnoreCase("time") && Perm.check(plr, "multiworld.time")) {
         	return TimeCommand.run(mc, plr, args);
+        }
+
+        // Weather Command
+        if (args[0].equalsIgnoreCase("weather") && Perm.check(plr, "multiworld.weather")) {
+        	return WeatherCommand.run(mc, plr, args);
         }
 
         // Info Command

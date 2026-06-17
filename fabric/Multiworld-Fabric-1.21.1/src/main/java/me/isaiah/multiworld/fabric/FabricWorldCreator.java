@@ -26,6 +26,7 @@ import net.minecraft.world.dimension.DimensionTypes;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.FlatChunkGenerator;
 import net.minecraft.world.gen.chunk.FlatChunkGeneratorConfig;
+import net.minecraft.world.level.LevelProperties;
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
 import xyz.nucleoid.fantasy.RuntimeWorldHandle;
@@ -68,6 +69,23 @@ public class FabricWorldCreator implements ICreator {
 				.setMirrorOverworldGameRules(false)   // per-dimension gamerules (don't share the overworld's)
 				.setMirrorOverworldDifficulty(false)  // per-dimension difficulty (don't share the overworld's)
                 ;
+
+        // Restore time-of-day and weather from the world's own level.dat (if it already exists on
+        // disk). RuntimeWorldProperties is built from this config, so it must be set BEFORE the world
+        // is opened. For a brand-new world there is no level.dat yet -> read fails -> config defaults.
+        try {
+            LevelProperties saved = MultiworldWorld.mw$readLevelProperties(MultiworldMod.mc, idd);
+            config.setTimeOfDay(saved.getTimeOfDay());
+            // setSunny resets raining/thundering, setRaining/setThundering(int) set their flag from
+            // time>0; re-apply the saved boolean flags last so all five fields match level.dat exactly.
+            config.setSunny(saved.getClearWeatherTime());
+            config.setRaining(saved.getRainTime());
+            config.setThundering(saved.getThunderTime());
+            config.setRaining(saved.isRaining());
+            config.setThundering(saved.isThundering());
+        } catch (Exception e) {
+            // New world (no level.dat yet) — keep config defaults.
+        }
 
         Fantasy fantasy = Fantasy.get(MultiworldMod.mc);
         RuntimeWorldHandle worldHandle = fantasy.getOrOpenPersistentWorld(new_id(id), config);

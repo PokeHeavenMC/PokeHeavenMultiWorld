@@ -1,5 +1,4 @@
 import net.fabricmc.loom.task.RemapJarTask
-import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 
 
 plugins {
@@ -65,16 +64,10 @@ dependencies {
 	modImplementation("me.lucko:fabric-permissions-api:0.2-SNAPSHOT")
 	// modImplementation("net.fabricmc.fabric-api:fabric-api-deprecated:0.92.5+1.20.1")
 	
-	val ic = DefaultExternalModuleDependency(
-		"com.javazilla.mods",
-		"icommon-fabric-1.21.1",
-		"1.21.1",
-		null
-	).apply {
-		isChanging = true // Make sure we get the latest version of iCommon
-	}
-
-	modImplementation(ic)
+	// iCommon : jar vendoré (Loom 1.11.8, remap mixin) figé dans libs/. Voir la note dans
+	// fabric/Multiworld-Fabric-1.21.1/build.gradle.kts : l'artefact distant `icommon-fabric-1.21.1:1.21.1`
+	// (isChanging) a été republié avec Loom 1.15.5 (+ remap static), incompatible avec notre Loom 1.13.469.
+	modImplementation(files("libs/icommon-fabric-1.21.1.jar"))
 
 
 	setOf(

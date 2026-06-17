@@ -80,9 +80,10 @@ public class MultiworldWorld extends RuntimeWorld implements IMultiworldWorld {
     }
     
     /**
-     * Reads gamerules from a world's level.dat
+     * Reads the persisted {@link LevelProperties} from a world's level.dat.
+     * Used to restore per-world state (gamerules, time of day, weather…) on load.
      */
-    public static GameRules mw$readGameRules(MinecraftServer server, Identifier worldId)
+    public static LevelProperties mw$readLevelProperties(MinecraftServer server, Identifier worldId)
             throws IOException, SymlinkValidationException {
 
         String name = Utils.getWorldName(worldId);
@@ -91,12 +92,12 @@ public class MultiworldWorld extends RuntimeWorld implements IMultiworldWorld {
         Optional<WorldFolderMode> mode = Utils.getFolderMode(worldId);
         if (!mode.isEmpty()) {
         	customWorldPath = Utils.getWorldPath(worldId, mode.get()).getParent();
-        
+
 	        if (mode.get() == WorldFolderMode.VANILLA) {
 	        	name = worldId.getPath();
 	        }
         }
-        
+
         LevelStorage storage = LevelStorage.create(customWorldPath);
 
         try (Session session = storage.createSession(name)) {
@@ -116,9 +117,16 @@ public class MultiworldWorld extends RuntimeWorld implements IMultiworldWorld {
                 throw new IllegalStateException("SaveProperties is not a LevelProperties");
             }
 
-            // Return the gamerules directly
-            return levelProps.getGameRules();
+            return levelProps;
         }
+    }
+
+    /**
+     * Reads gamerules from a world's level.dat
+     */
+    public static GameRules mw$readGameRules(MinecraftServer server, Identifier worldId)
+            throws IOException, SymlinkValidationException {
+        return mw$readLevelProperties(server, worldId).getGameRules();
     }
     
     private static Session mw$session(MinecraftServer server, Identifier id) {
