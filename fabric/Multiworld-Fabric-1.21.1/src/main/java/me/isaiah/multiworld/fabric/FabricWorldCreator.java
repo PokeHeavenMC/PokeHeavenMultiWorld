@@ -119,9 +119,21 @@ public class FabricWorldCreator implements ICreator {
 		}
     }
 
+    /**
+     * Sets the difficulty of a world we created.
+     *
+     * <p>{@code worldConfigs} only holds the worlds Multiworld opened, so the lookup returns null
+     * for a vanilla world — callers must reject those first (see {@code DifficultyCommand}). The
+     * guard here is a last resort so a missed check logs instead of throwing.
+     */
     @Override
     public void set_difficulty(String id, Difficulty dif) {
-    	this.worldConfigs.get(id).setDifficulty(dif);
+    	RuntimeWorldConfig config = this.worldConfigs.get(id);
+    	if (null == config) {
+    		MultiworldMod.LOGGER.warn("set_difficulty: '{}' is not a world managed by Multiworld", id);
+    		return;
+    	}
+    	config.setDifficulty(dif);
     }
     
     private static RegistryKey<DimensionType> dim_of(Identifier id) {

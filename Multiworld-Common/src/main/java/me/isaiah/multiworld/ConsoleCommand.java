@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import me.isaiah.multiworld.command.DeleteCommand;
+import me.isaiah.multiworld.command.DifficultyCommand;
 import me.isaiah.multiworld.command.TpCommand;
 import me.isaiah.multiworld.perm.Perm;
 import net.minecraft.server.MinecraftServer;
@@ -59,6 +60,14 @@ public class ConsoleCommand {
             LOGGER.info("Multiworld Mod version " + MultiworldMod.VERSION);
             return 1;
         }
+
+		// Difficulty Command
+		// The console has no world of its own, hence the null: the world id argument is then
+		// mandatory, and DifficultyCommand says so rather than falling back to some other world.
+		// This is what makes a world's difficulty reachable from a scheduler or a startup script.
+		if (args[0].equalsIgnoreCase("difficulty")) {
+			return DifficultyCommand.run(mc, source, null, args);
+		}
 
 		throw ServerCommandSource.REQUIRES_PLAYER_EXCEPTION.create();
 	}

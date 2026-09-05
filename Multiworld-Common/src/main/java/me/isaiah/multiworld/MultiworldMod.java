@@ -22,6 +22,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import me.isaiah.multiworld.command.CmdCommand;
 import me.isaiah.multiworld.command.CreateCommand;
 import me.isaiah.multiworld.command.DifficultyCommand;
 import me.isaiah.multiworld.command.IGameruleCommand;
@@ -366,6 +367,15 @@ public class MultiworldMod {
         	return InfoCommand.run(mc, plr, args);
         }
 
+        // Cmd Command (exécuter une commande dans une dimension) — admin only
+        if (args[0].equalsIgnoreCase("cmd")) {
+        	if (!ALL) {
+        		message(plr, "No permission! Missing permission: multiworld.admin");
+        		return 1;
+        	}
+        	return CmdCommand.run(mc, plr, args, message);
+        }
+
         // TP Command
         if (args[0].equalsIgnoreCase("tp") ) {
             if (!(ALL || Perm.has(plr, "multiworld.tp"))) {
@@ -458,9 +468,23 @@ public class MultiworldMod {
 		}
     }
 	
+	/**
+	 * Sends a message to the source of a command.
+	 *
+	 * <p>Note: a command source is not always a player. The console has none, and calling
+	 * {@code sendMessage} on the null returned by {@code getPlayer()} throws an NPE that the catch
+	 * below swallows — so the console would silently see nothing at all. Falling back to the source
+	 * itself, which every source type knows how to print, is what makes console output reach the
+	 * operator. This also fixes the two messages of {@code MixinGameruleCommand}, which were lost
+	 * whenever {@code /gamerule} was typed from the console on a Multiworld world.
+	 */
 	public static void message(ServerCommandSource s, String message) {
 		try {
 			ServerPlayerEntity player = s.getPlayer();
+			if (null == player) {
+				s.sendMessage(text(message));
+				return;
+			}
 			player.sendMessage(Text.of(translate_alternate_color_codes('&', message)), false);
 		} catch (Exception e) {
 			e.printStackTrace();
