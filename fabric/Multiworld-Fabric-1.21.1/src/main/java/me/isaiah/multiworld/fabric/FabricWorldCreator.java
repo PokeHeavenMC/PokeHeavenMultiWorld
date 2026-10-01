@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import me.isaiah.multiworld.ICreator;
 import me.isaiah.multiworld.MultiworldMod;
+import multiworld.api.IMultiworldWorld;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
@@ -94,6 +95,11 @@ public class FabricWorldCreator implements ICreator {
         
         if (null != rules) {
         	world.getGameRules().setAllValues(rules, null);
+        	// The constructor's save wrote level.dat before these rules were applied: rewrite it
+        	// so a crash before the next autosave doesn't lose the restored gamerules.
+        	if (world instanceof IMultiworldWorld mw) {
+        		mw.multiworld$saveLevelDatFile();
+        	}
         }
         
         this.worldConfigs.put(id, config);

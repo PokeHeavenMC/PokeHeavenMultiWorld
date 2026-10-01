@@ -7,10 +7,13 @@ import xyz.nucleoid.fantasy.RuntimeWorldProperties;
 import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.Dynamic;
 
+import me.isaiah.multiworld.MultiworldMod;
 import me.isaiah.multiworld.Utils;
 import multiworld.api.IMultiworldWorld;
 import multiworld.api.WorldFolderMode;
 import multiworld.mixin.MixinLevelInfo;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -39,6 +42,7 @@ import xyz.nucleoid.fantasy.util.VoidWorldProgressListener;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -195,7 +199,8 @@ public class MultiworldWorld extends RuntimeWorld implements IMultiworldWorld {
             props.setWanderingTraderId(swProps.getWanderingTraderId());
             props.setWanderingTraderSpawnChance(swProps.getWanderingTraderSpawnChance());
             props.setWanderingTraderSpawnDelay(swProps.getWanderingTraderSpawnDelay());
-            props.setWorldBorder(swProps.getWorldBorder());
+            // swProps.getWorldBorder() is always the default border: use the world's live one.
+            props.setWorldBorder(this.getWorldBorder().write());
         }
         
         props.addServerBrand("fabric", true);
@@ -217,9 +222,24 @@ public class MultiworldWorld extends RuntimeWorld implements IMultiworldWorld {
     	this.multiworld$saveLevelDatFile();
     }
     
+    /**
+     * Writes this world's own level.dat into its dimension folder (the path read back by
+     * {@link #mw$readLevelProperties}). Never goes through {@code mw$levelStorageAccess}: that is
+     * the main server session, and writing through it would overwrite the overworld's level.dat.
+     */
     @Override
     public void multiworld$saveLevelDatFile() {
-        this.mw$levelStorageAccess.backupLevelDataFile(this.getServer().getRegistryManager(), getSaveProperties(), this.getServer().getPlayerManager().getUserData());
+        Path dir = Utils.getWorldPath(multiworld$getLevelId(), WorldFolderMode.VANILLA);
+        try {
+            Files.createDirectories(dir);
+            NbtCompound root = new NbtCompound();
+            root.put("Data", getSaveProperties().cloneWorldNbt(this.getServer().getRegistryManager(), null));
+            Path tmp = Files.createTempFile(dir, "level", ".dat");
+            NbtIo.writeCompressed(root, tmp);
+            Util.backupAndReplace(dir.resolve("level.dat"), tmp, dir.resolve("level.dat_old"));
+        } catch (Exception e) {
+            MultiworldMod.LOGGER.error("Failed to save level.dat for {}", multiworld$getLevelId(), e);
+        }
     }
 
 }

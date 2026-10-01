@@ -53,7 +53,7 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
 	 * Valid Subcommands
 	 */
 	private static String[] subcommands = {
-			"tp", "list", "version", "create", "spawn", "setspawn", "gamerule", "gameruleAll", "help", "difficulty", "time", "weather", "info", "portal"
+			"tp", "list", "version", "create", "spawn", "setspawn", "gamerule", "gameruleAll", "help", "difficulty", "time", "weather", "info", "portal", "cmd"
 			// TODO: Add: delete, load, unload, info, clone, who, import
 	};
 	
@@ -94,6 +94,18 @@ public class InfoSuggest implements SuggestionProvider<ServerCommandSource> {
                         val = val.replace("multiworld:", "");
                     names.add(val);
                  });
+                for (String s : names) builder.suggest(s);
+            }
+
+            if (cmds[1].equalsIgnoreCase("cmd") && Perm.has(plr, "multiworld.admin")) {
+                MinecraftServer mc = MultiworldMod.mc;
+                List<String> names = new ArrayList<>();
+                mc.getWorldRegistryKeys().forEach(r -> {
+                    String val = r.getValue().toString();
+                    if (val.startsWith("multiworld:"))
+                        val = val.replace("multiworld:", "");
+                    names.add(val);
+                });
                 for (String s : names) builder.suggest(s);
             }
 

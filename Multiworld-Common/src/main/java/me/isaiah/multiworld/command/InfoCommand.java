@@ -67,6 +67,10 @@ public class InfoCommand implements Command {
         long dayTime = timeOfDay % 24000L;
         MultiworldMod.message(plr, "&aTime&r: " + timeOfDay + " (day " + day + ", daytime " + dayTime + ")");
 
+        // Difficulty (per-dimension: Fantasy's RuntimeWorldProperties, not the server's)
+        MultiworldMod.message(plr, "&aDifficulty&r: " + w.getDifficulty().getName()
+                + (w.getLevelProperties().isDifficultyLocked() ? " (locked)" : ""));
+
         // Weather
         boolean raining = w.isRaining();
         boolean thundering = w.isThundering();

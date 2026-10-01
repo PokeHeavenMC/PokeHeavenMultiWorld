@@ -481,12 +481,35 @@ public class Utils {
 		    	dim = Util.OVERWORLD_ID;
 		    }
 			
+			String id = optId.orElseGet(() -> {
+				String namespace = config.getString("namespace");
+				String path = config.getString("path");
+				String savedId = namespace + ":" + path;
+				return savedId;
+			});
+
 			Difficulty d = Difficulty.NORMAL;
 
 			// Set saved Difficulty
 			if (config.is_set("difficulty")) {
 				String di = config.getString("difficulty");
 				d = getDifficultyFromName(di);
+			} else {
+				// Migration: /mw difficulty used to write into config/multiworld/worlds/<ns>/<path>.yml,
+				// which nothing reads back for worlds in the current format. Pull the value over once.
+				Identifier wid = Identifier.tryParse(id);
+				if (null != wid) {
+					File legacy = new File(new File(new File(getConfigDir(), "worlds"), wid.getNamespace()), wid.getPath() + ".yml");
+					if (legacy.exists()) {
+						FileConfiguration old = new FileConfiguration(legacy);
+						if (old.is_set("difficulty")) {
+							d = getDifficultyFromName(old.getString("difficulty"));
+							config.set("difficulty", d.getName());
+							config.save();
+							MultiworldMod.LOGGER.info("Migrated saved difficulty for " + id + ": " + d.getName());
+						}
+					}
+				}
 			}
 
 			// Gen
@@ -501,13 +524,6 @@ public class Utils {
         		}
 			}
 			
-			String id = optId.orElseGet(() -> {
-				String namespace = config.getString("namespace");
-				String path = config.getString("path");
-				String savedId = namespace + ":" + path;
-				return savedId;
-			});
-
 			ServerWorld world = MultiworldMod.create_world(id, dim, gen, d, seed);
 
 			MultiworldMod.get_world_creator().set_difficulty(id, d);
