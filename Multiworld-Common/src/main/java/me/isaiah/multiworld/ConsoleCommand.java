@@ -7,29 +7,29 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import me.isaiah.multiworld.command.DeleteCommand;
 import me.isaiah.multiworld.command.DifficultyCommand;
+import me.isaiah.multiworld.command.DuplicateCommand;
+import me.isaiah.multiworld.command.ImportCommand;
 import me.isaiah.multiworld.command.TpCommand;
-import me.isaiah.multiworld.perm.Perm;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
 
 public class ConsoleCommand {
-	
+
 	public static final Logger LOGGER = LoggerFactory.getLogger("multiworld");
 
+	// Replies go through MultiworldMod.message(source, ...) rather than LOGGER so they also reach
+	// RCON / panel sources; for the real console, source.sendMessage still ends up in the log.
 	public static int broadcast_console(MinecraftServer mc, ServerCommandSource source, String message) throws CommandSyntaxException {
 		if (null == message) {
-			LOGGER.info("Multiworld Mod for Minecraft " + mc.getVersion());
-			LOGGER.info("(Console Commands are experimental)");
+			MultiworldMod.message(source, "&bMultiworld Mod for Minecraft " + mc.getVersion());
+			MultiworldMod.message(source, "(Console Commands are experimental)");
 			return 1;
 		}
 
 		String[] args = message.split(" ");
 		if (args[0].equalsIgnoreCase("help")) {
-			for (String s : MultiworldMod.COMMAND_HELP) LOGGER.info(s);
-			
+			for (String s : MultiworldMod.COMMAND_HELP) MultiworldMod.message(source, s);
+
 			return 1;
 		}
 
@@ -39,10 +39,20 @@ public class ConsoleCommand {
 			return 1;
 		}
 
+		// Import Command
+		if (args[0].equalsIgnoreCase("import")) {
+			return ImportCommand.run(mc, source, args);
+		}
+
+		// Duplicate Command
+		if (args[0].equalsIgnoreCase("duplicate")) {
+			return DuplicateCommand.run(mc, source, args);
+		}
+
 		// TP Command
 		if (args[0].equalsIgnoreCase("tp") ) {
 			if (args.length <= 2) {
-				LOGGER.info("Usage: /mw tp <world> <player>");
+				MultiworldMod.message(source, "Usage: /mw tp <world> <player>");
 				return 0;
 			}
 			return TpCommand.run(mc, null, args);
@@ -50,14 +60,14 @@ public class ConsoleCommand {
 
 		// List Command
         if (args[0].equalsIgnoreCase("list") ) {
-            LOGGER.info("All Worlds:");
-            mc.getWorlds().forEach(world -> LOGGER.info("- " + world.getRegistryKey().getValue().toString()));
+            MultiworldMod.message(source, "&bAll Worlds:");
+            mc.getWorlds().forEach(world -> MultiworldMod.message(source, "- " + world.getRegistryKey().getValue().toString()));
             return 1;
         }
 
         // Version Command
         if (args[0].equalsIgnoreCase("version") ) {
-            LOGGER.info("Multiworld Mod version " + MultiworldMod.VERSION);
+            MultiworldMod.message(source, "Multiworld Mod version " + MultiworldMod.VERSION);
             return 1;
         }
 
@@ -69,6 +79,10 @@ public class ConsoleCommand {
 			return DifficultyCommand.run(mc, source, null, args);
 		}
 
-		throw ServerCommandSource.REQUIRES_PLAYER_EXCEPTION.create();
+		// Anything else needs a player (current world, position...): say so instead of throwing
+		// REQUIRES_PLAYER, which reads as if /mw itself were unusable from the console.
+		MultiworldMod.message(source, "[&4Multiworld&r] '/mw " + args[0] + "' requires a player."
+				+ " Console commands: help, list, version, tp, delete, import, duplicate, difficulty");
+		return 0;
 	}
 }

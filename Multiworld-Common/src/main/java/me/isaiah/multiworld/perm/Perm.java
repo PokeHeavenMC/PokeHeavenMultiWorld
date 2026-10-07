@@ -33,7 +33,11 @@ public class Perm {
 
     public static boolean has(ServerCommandSource s, String perm) {
         try {
-            return has(MultiworldMod.get_player(s), perm) || permissionLevel(s, 1);
+            ServerPlayerEntity plr = s.getPlayer();
+            if (null == plr) {
+                return permissionLevel(s, 1);
+            }
+            return has(plr, perm) || permissionLevel(s, 1);
         } catch (Exception e) {
             return permissionLevel(s, 1);
         }

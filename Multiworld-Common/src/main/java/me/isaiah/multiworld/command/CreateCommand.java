@@ -42,8 +42,8 @@ public class CreateCommand implements Command {
 	 * Implementation of a Tuple
 	 */
 	static class Tuple<K, V> {
-		private K first;
-		private V second;
+		K first;
+		V second;
 
 		public Tuple(K first, V second){        
 			this.first = first;        
@@ -59,7 +59,7 @@ public class CreateCommand implements Command {
 	 * @param arg - The argument from the command
 	 * @return Tuple of ChunkGenerator & Generator Name
 	 */
-	private static Tuple<ChunkGenerator, String> checkArgForGen(MinecraftServer mc, String arg) {
+	static Tuple<ChunkGenerator, String> checkArgForGen(MinecraftServer mc, String arg) {
     	if (arg.startsWith("-g ") || arg.startsWith("-g=")) {
     		String ab = arg.substring("-g=".length());
 
@@ -77,7 +77,7 @@ public class CreateCommand implements Command {
 	 * Parse World Seed from Arguments.
 	 * Ex. ("-s=1345")
 	 */
-	private static Optional<Long> checkArgForSeed(MinecraftServer mc, String arg) {
+	static Optional<Long> checkArgForSeed(MinecraftServer mc, String arg) {
 		if (arg.startsWith("-s ") || arg.startsWith("-s=")) {
 			String ab = arg.substring("-s=".length());
 			if (ab.startsWith("RANDOM")) {

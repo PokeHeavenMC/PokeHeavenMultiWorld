@@ -25,7 +25,9 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.isaiah.multiworld.command.CmdCommand;
 import me.isaiah.multiworld.command.CreateCommand;
 import me.isaiah.multiworld.command.DifficultyCommand;
+import me.isaiah.multiworld.command.DuplicateCommand;
 import me.isaiah.multiworld.command.IGameruleCommand;
+import me.isaiah.multiworld.command.ImportCommand;
 import me.isaiah.multiworld.command.InfoCommand;
 import me.isaiah.multiworld.command.PortalCommand;
 import me.isaiah.multiworld.command.SetspawnCommand;
@@ -71,6 +73,8 @@ public class MultiworldMod {
     		"&a/mw gamerule <rule> <value>&r - Change a worlds Gamerules",
     		"&a/mw gameruleAll <rule> <value>&r - Change a Gamerule in all dimensions",
     		"&a/mw create <id> <env> [-g=<generator> -s=<seed>]&r - create a new world",
+    		"&a/mw import <folder> <id> [env] [-s=<seed>]&r - Load a world folder put in dimensions/multiworld as <id> (replaces <id> if it exists)",
+    		"&a/mw duplicate <id> <newid>&r - Copy a loaded world to a new world <newid>",
     		"&a/mw difficulty <value> [world id] - Sets the difficulty of a world",
     		"&a/mw time <set|add|query> <time> [world id]&r - Change a world's time of day",
     		"&a/mw weather <clear|rain|thunder> [world id] [duration]&r - Set a world's weather",
@@ -237,15 +241,22 @@ public class MultiworldMod {
     				// #endif
 
     				try {
-    					boolean has = Perm.has(get_player(source), "multiworld.cmd") ||
-    							Perm.has(get_player(source), "multiworld.admin") || permissionLevel(source, 1);
+    					// Console, RCON, command blocks: no player, so only the vanilla level counts.
+    					// Going through get_player here would throw REQUIRES_PLAYER for every such source.
+    					ServerPlayerEntity plr = source.getPlayer();
+    					if (null == plr) {
+    						return permissionLevel(source, 1);
+    					}
+
+    					boolean has = Perm.has(plr, "multiworld.cmd") ||
+    							Perm.has(plr, "multiworld.admin") || permissionLevel(source, 1);
 
     					if (has) {
     						return has;
     					}
 
     					for (String perm : perms_list) {
-    						if (Perm.has(get_player(source), perm)) {
+    						if (Perm.has(plr, perm)) {
     							// Has Permission for at least one sub-command.
     							return true;
     						}
@@ -429,6 +440,24 @@ public class MultiworldMod {
             return CreateCommand.run(mc, plr, args);
         }
         
+        // Import Command — admin only: it can replace an existing world
+        if (args[0].equalsIgnoreCase("import")) {
+        	if (!ALL) {
+        		message(plr, "No permission! Missing permission: multiworld.admin");
+        		return 1;
+        	}
+        	return ImportCommand.run(mc, plr.getCommandSource(), args);
+        }
+
+        // Duplicate Command — admin only: it copies a whole world folder
+        if (args[0].equalsIgnoreCase("duplicate")) {
+        	if (!ALL) {
+        		message(plr, "No permission! Missing permission: multiworld.admin");
+        		return 1;
+        	}
+        	return DuplicateCommand.run(mc, plr.getCommandSource(), args);
+        }
+
         // Delete Command
         if (args[0].equalsIgnoreCase("delete")) {
         	if (!ALL) {

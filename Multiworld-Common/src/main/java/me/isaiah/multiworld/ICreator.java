@@ -107,5 +107,30 @@ public interface ICreator {
 	public boolean permissionLevel(ServerPlayerEntity plr, int level);
 
 	void delete_world(String id);
-	
+
+	/**
+	 * Deletes a world, then runs {@code onDeleted} once its folder is gone. Platforms where
+	 * deletion is deferred override this; the default assumes {@link #delete_world(String)} is done
+	 * when it returns.
+	 */
+	default void delete_world(String id, Runnable onDeleted) {
+		delete_world(id);
+		onDeleted.run();
+	}
+
+	/**
+	 * True if this platform can unload a loaded world at runtime without deleting its files.
+	 */
+	default boolean can_unload_world() {
+		return false;
+	}
+
+	/**
+	 * Saves, unloads and closes a loaded world, keeping its folder, then runs {@code onUnloaded}
+	 * on a later tick once nothing holds its files. Only call when {@link #can_unload_world()}.
+	 */
+	default void unload_world(String id, Runnable onUnloaded) {
+		throw new UnsupportedOperationException("Unloading worlds is not supported on this platform");
+	}
+
 }

@@ -1,16 +1,26 @@
 package me.isaiah.multiworld.fabric;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import me.isaiah.multiworld.ICreator;
 import me.isaiah.multiworld.MultiworldMod;
+import me.isaiah.multiworld.Utils;
 import multiworld.api.IMultiworldWorld;
+import multiworld.api.WorldFolderMode;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerTask;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -21,6 +31,7 @@ import net.minecraft.util.path.SymlinkValidationException;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.TeleportTarget;
+import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.dimension.DimensionTypes;
@@ -45,8 +56,13 @@ public class FabricWorldCreator implements ICreator {
 		this.worldConfigs = new HashMap<>();
 	}
 	
+    // Worlds handed to Fantasy for deletion or unloading, closed by mw$onWorldUnload when Fantasy
+    // unloads them, with what to run once their files are released (and gone, for a deletion).
+    private static final Map<RegistryKey<World>, Runnable> mw$pendingClose = new ConcurrentHashMap<>();
+
     public static void init() {
         MultiworldMod.setICreator(new FabricWorldCreator());
+        ServerWorldEvents.UNLOAD.register(FabricWorldCreator::mw$onWorldUnload);
     }
 
     public ServerWorld create_world(String id, Identifier dim, ChunkGenerator gen, Difficulty dif, long seed) {
@@ -147,9 +163,83 @@ public class FabricWorldCreator implements ICreator {
     }
     
     public void delete_world(String id) {
+        delete_world(id, () -> {});
+    }
+
+    @Override
+    public void delete_world(String id, Runnable onDeleted) {
+        Identifier idd = new_id(id);
+        RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, idd);
+        this.worldConfigs.remove(id);
+
+        if (null == MultiworldMod.mc.getWorld(key)) {
+            // Not loaded: getOrOpenPersistentWorld would try to open it with a null config.
+            // Nothing holds its files, so the folder can go right away.
+            Path dir = Utils.getWorldPath(idd, WorldFolderMode.VANILLA);
+            try {
+                mw$deleteDirectory(dir);
+                MultiworldMod.LOGGER.info("Deleted world folder {}", dir);
+            } catch (IOException e) {
+                MultiworldMod.LOGGER.warn("Failed to delete world folder {}", dir, e);
+            }
+            onDeleted.run();
+            return;
+        }
+
+        // Fantasy deletes on a later tick, once players are gone and chunks unloaded. It never
+        // closes the world though, so region/poi/entity files stay open and on Windows its
+        // deleteDirectory fails: mw$onWorldUnload closes them first.
+        mw$pendingClose.put(key, onDeleted);
         Fantasy fantasy = Fantasy.get(MultiworldMod.mc);
-        RuntimeWorldHandle worldHandle = fantasy.getOrOpenPersistentWorld(new_id(id), null);
-        worldHandle.delete();
+        fantasy.getOrOpenPersistentWorld(idd, null).delete();
+    }
+
+    @Override
+    public boolean can_unload_world() {
+        return true;
+    }
+
+    @Override
+    public void unload_world(String id, Runnable onUnloaded) {
+        Identifier idd = new_id(id);
+        RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, idd);
+        if (null == MultiworldMod.mc.getWorld(key)) {
+            onUnloaded.run();
+            return;
+        }
+        this.worldConfigs.remove(id);
+
+        // Fantasy saves the world (level.dat included, see MultiworldWorld.save) and unloads it on a
+        // later tick, once players are sent away, but leaves its files open: mw$onWorldUnload closes them.
+        mw$pendingClose.put(key, onUnloaded);
+        Fantasy fantasy = Fantasy.get(MultiworldMod.mc);
+        fantasy.getOrOpenPersistentWorld(idd, null).unload();
+    }
+
+    /**
+     * Fired by Fantasy's RuntimeWorldManager.delete/unload after removing the world from the server
+     * (and, for delete, BEFORE it deletes the folder): closing here releases every file handle of the world.
+     */
+    private static void mw$onWorldUnload(MinecraftServer server, ServerWorld world) {
+        Runnable after = mw$pendingClose.remove(world.getRegistryKey());
+        if (null == after) return;
+        try {
+            world.close();
+        } catch (Exception e) {
+            MultiworldMod.LOGGER.warn("Failed to close world {}", world.getRegistryKey().getValue(), e);
+        }
+        MultiworldMod.LOGGER.info("World {} unloaded and closed", world.getRegistryKey().getValue());
+        // Queued, not run: on delete, Fantasy deletes the folder right after this event returns.
+        server.send(new ServerTask(server.getTicks(), after));
+    }
+
+    private static void mw$deleteDirectory(Path dir) throws IOException {
+        if (!Files.exists(dir)) return;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            for (Path p : (Iterable<Path>) walk.sorted(Comparator.reverseOrder())::iterator) {
+                Files.delete(p);
+            }
+        }
     }
 
 	@Override
